@@ -112,17 +112,26 @@ export default {
 
   methods: {
     handleChange(value) {
+      if (!value.length ) {
+        setTimeout(() => {
+            this.$store.commit(`${this.resourceName}/updateFilterState`, {
+                filterClass: this.filterKey,
+                value : "",
+            });
+            this.$emit('change');
+        }, 100)
+      } else {
         setTimeout(() => {
             value = value.map(value => {
                 return flatpickr.formatDate(value, this.dateFormat)
             })
-
             this.$store.commit(`${this.resourceName}/updateFilterState`, {
                 filterClass: this.filterKey,
                 value,
             });
-            this.$emit('change')
+            this.$emit('change');
         }, 100)
+      }
     },
   }
 }
