@@ -12,16 +12,19 @@ Run this command in your nova project:
 Just use DateRangeFilter class instead of Filter
 
 ```php
-use Ampeco\Filters\DateRangeFilter;
+namespace App\Nova\Filters;
 
-class DateRange extends DateRangeFilter
+use Ampeco\Filters\DateRangeFilter as BaseDateRangeFilter;
+use Illuminate\Http\Request;
+
+class DateRangeFilter extends BaseDateRangeFilter
 {
     public function apply(Request $request, $query, $value)
     {
-        $from = Carbon::parse($value[0])->startOfDay();
-        $to = Carbon::parse($value[1])->endOfDay();
-
-        return $query->whereBetween('created_at', [$from, $to]);
+        return $query->whereBetween('created_at', [
+            \Carbon\Carbon::parse($value[0])->startOfDay(), // From
+            \Carbon\Carbon::parse($value[1])->endOfDay(), // To
+        ]);
     }
 
     /**
@@ -30,16 +33,21 @@ class DateRange extends DateRangeFilter
      * @param  \Illuminate\Http\Request  $request
      * @return array
      */
-    // public function options(Request $request)
-    // {
-    //     return [
-    //         'firstDayOfWeek' => 0,
-    //         'separator' => '-',
-    //         'enableTime' => false,
-    //         'enableSeconds' => false,
-    //         'twelveHourTime' => false
-    //     ];
-    // }
+    public function options(Request $request)
+    {
+        return [
+            'mode'           => 'range',       // <- Important!!; And default 'single'
+            'dateFormat'     => 'Y-m-d',       // default 'Y-m-d H:i:S'
+            'placeholder'    => 'DateRange',   // default __('Pick a date range')
+            // -----------------------------------------------------------------------
+            // 'separator'      => '/',           // default "-"
+            // 'firstDayOfWeek' => 1,             // default 0
+            // 'disabled'       => true,          // default false
+            // 'twelveHourTime' => true,          // default false
+            // 'enableTime'     => true,          // default false
+            // 'enableSeconds'  => true,          // default false
+        ];
+    }
 }
 ```
 
@@ -48,7 +56,7 @@ class DateRange extends DateRangeFilter
 Use fluent interface to configure your DateRange filter
 
 ```php
-
-(new DateRange)->placeholder("Placeholder")->dateFormat("m d Y")
-
+DateRange::make()->enableTime()->placeholder("Placeholder")->dateFormat("Y-m-d"),
+// Or simply
+new DateRange,
 ```
