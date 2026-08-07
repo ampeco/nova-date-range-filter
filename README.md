@@ -42,13 +42,3 @@ class DateRange extends DateRangeFilter
     // }
 }
 ```
-
-### Customization
-
-Use fluent interface to configure your DateRange filter
-
-```php
-
-(new DateRange)->placeholder("Placeholder")->dateFormat("m d Y")
-
-```
