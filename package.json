@@ -17,7 +17,7 @@
         "lodash": "^4.17.21",
         "postcss": "^8.3.11",
         "vue-loader": "^16.8.3",
-        "flatpickr": "^4.5.2",
+        "flatpickr": "^4.6.13",
         "cross-env": "^5.0.0",
         "laravel-nova": "^1.0"
     }

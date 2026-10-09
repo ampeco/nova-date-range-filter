@@ -96,7 +96,7 @@ export default {
         this.options.forEach((option) => {
             Object.assign(this.filter, {[option.name]: option.value})
         })
-        Nova.$on("clear-filter-values", () => this.flatpickr && this.flatpickr.clear())
+        Nova.$on("clear-filter-values", this.clearValue)
         this.$nextTick(() => {
             this.flatpickr = flatpickr(this.$refs.datePicker, {
                 enableTime: this.enableTime,
@@ -128,7 +128,16 @@ export default {
         })
     },
 
+    beforeUnmount() {
+        Nova.$off("clear-filter-values", this.clearValue)
+        this.flatpickr && this.flatpickr.destroy()
+    },
+
     methods: {
+        clearValue() {
+            this.flatpickr && this.flatpickr.clear()
+        },
+
         handleChange(value) {
             setTimeout(() => {
                 if (this.enableTime && this.modeType === 'range' && value.length === 2) {
