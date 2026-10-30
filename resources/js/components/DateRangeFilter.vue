@@ -1,6 +1,17 @@
 <template>
     <div class="pt-2 pb-3">
-        <h3 class="px-3 text-xs uppercase font-bold tracking-wide">{{ filter.name }}</h3>
+        <div class="px-3 flex items-center justify-between gap-2">
+            <h3 class="text-xs uppercase font-bold tracking-wide">{{ filter.name }}</h3>
+            <button
+                v-if="hasValue"
+                type="button"
+                class="text-sm leading-none text-red-500 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="disabled"
+                :title="__('Clear')"
+                :aria-label="__('Clear')"
+                @click="clearFilter"
+            >✕</button>
+        </div>
 
         <div class="p-2">
             <input hidden />
@@ -18,6 +29,7 @@
 </template>
 <script>
 import flatpickr from 'flatpickr'
+import dateRangeFilterState from '../dateRangeFilterState'
 import '../../airbnb-modified.css'
 
 export default {
@@ -88,6 +100,13 @@ export default {
         },
         defaultMinute() {
             return this.filter.mode === 'to' ? 59 : 0
+        },
+        hasValue() {
+            if (Array.isArray(this.filter.currentValue)) {
+                return this.filter.currentValue.length > 0
+            }
+
+            return this.filter.currentValue !== null && this.filter.currentValue !== ''
         }
     },
 
@@ -131,22 +150,29 @@ export default {
     methods: {
         handleChange(value) {
             setTimeout(() => {
-                if (this.enableTime && this.modeType === 'range' && value.length === 2) {
-                    value[1].setHours(23, 59, 0, 0)
+                const [from, to] = value
+                if (this.enableTime && this.modeType === 'range' && value.length === 2
+                    && from.getHours() === to.getHours() && from.getMinutes() === to.getMinutes()) {
+                    to.setHours(23, 59, 0, 0)
                 }
 
-                value = value.map(value => {
-                    return flatpickr.formatDate(value, this.dateFormat)
-                })
-
-                if (Object.keys(value).length !== 0) {
-                    this.$store.commit(`${this.resourceName}/updateFilterState`, {
-                        filterClass: this.filterKey,
-                        value,
-                    });
-                    this.$emit('change')
-                }
+                this.updateFilterValue(dateRangeFilterState.selectedDatesToFilterValue(value, this.dateFormat, flatpickr.formatDate))
             }, 100)
+        },
+        clearFilter() {
+            if (this.disabled) {
+                return
+            }
+
+            if (this.flatpickr) {
+                this.flatpickr.clear()
+            }
+
+            this.updateFilterValue([])
+        },
+        updateFilterValue(value) {
+            dateRangeFilterState.commitDateRangeFilterValue(this.$store, this.resourceName, this.filterKey, value)
+            this.$emit('change')
         },
     }
 }
