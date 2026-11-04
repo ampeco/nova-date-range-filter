@@ -152,7 +152,7 @@ export default {
             setTimeout(() => {
                 const [from, to] = value
                 if (this.enableTime && this.modeType === 'range' && value.length === 2
-                    && from.getHours() === to.getHours() && from.getMinutes() === to.getMinutes()) {
+                    && from.getTime() === to.getTime()) {
                     to.setHours(23, 59, 0, 0)
                 }
 
