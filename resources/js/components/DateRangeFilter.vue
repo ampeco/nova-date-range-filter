@@ -3,7 +3,7 @@
         <div class="px-3 flex items-center justify-between gap-2">
             <h3 class="text-xs uppercase font-bold tracking-wide">{{ filter.name }}</h3>
             <button
-                v-if="hasValue"
+                v-if="hasValue && !maxRangeDays"
                 type="button"
                 class="text-sm leading-none text-red-500 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="disabled"
@@ -24,6 +24,7 @@
                 type="text"
                 :placeholder="placeholder"
             />
+            <p v-if="rangeMessage" class="mt-1 text-xs text-red-500">{{ rangeMessage }}</p>
         </div>
     </div>
 </template>
@@ -45,7 +46,7 @@ export default {
 
     },
 
-    data: () => ({flatpickr: null}),
+    data: () => ({flatpickr: null, rangeMessage: null, pickedDatesCount: 0}),
 
     computed: {
         placeholder() {
@@ -101,6 +102,12 @@ export default {
         defaultMinute() {
             return this.filter.mode === 'to' ? 59 : 0
         },
+        maxRangeDays() {
+            return this.modeType === 'range' ? this.filter.maxRangeDays : null
+        },
+        pickedRangeEndsAtEndOfDay() {
+            return this.enableTime && this.modeType === 'range' && this.filter.pickedRangeEndsAtEndOfDay
+        },
         hasValue() {
             if (Array.isArray(this.filter.currentValue)) {
                 return this.filter.currentValue.length > 0
@@ -108,6 +115,12 @@ export default {
 
             return this.filter.currentValue !== null && this.filter.currentValue !== ''
         }
+    },
+
+    watch: {
+        'filter.currentValue'() {
+            this.rangeMessage = null
+        },
     },
 
     mounted() {
@@ -120,6 +133,7 @@ export default {
             this.flatpickr = flatpickr(this.$refs.datePicker, {
                 enableTime: this.enableTime,
                 enableSeconds: this.enableSeconds,
+                onChange: this.handleSelection,
                 onClose: this.handleChange,
                 dateFormat: this.dateFormat,
                 allowInput: true,
@@ -148,12 +162,36 @@ export default {
     },
 
     methods: {
+        handleSelection(selectedDates, dateStr, instance) {
+            const rangeCompleted = selectedDates.length === 2 && this.pickedDatesCount === 1
+            this.pickedDatesCount = selectedDates.length
+
+            if (this.maxRangeDays) {
+                instance.set(selectedDates.length === 1
+                    ? dateRangeFilterState.selectableDatesAround(selectedDates[0], this.maxRangeDays)
+                    : {minDate: null, maxDate: null})
+            }
+
+            if (this.pickedRangeEndsAtEndOfDay && rangeCompleted) {
+                const [from, to] = selectedDates
+                to.setHours(23, 59, 0, 0)
+                instance.setDate([from, to], false)
+            }
+        },
         handleChange(value) {
             setTimeout(() => {
                 const [from, to] = value
                 if (this.enableTime && this.modeType === 'range' && value.length === 2
                     && from.getTime() === to.getTime()) {
                     to.setHours(23, 59, 0, 0)
+                }
+
+                if (this.maxRangeDays) {
+                    const violation = dateRangeFilterState.rangeLimitViolation(value, this.maxRangeDays)
+                    if (violation) {
+                        this.rangeMessage = this.filter.rangeMessages[violation]
+                        return
+                    }
                 }
 
                 this.updateFilterValue(dateRangeFilterState.selectedDatesToFilterValue(value, this.dateFormat, flatpickr.formatDate))

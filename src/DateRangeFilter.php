@@ -26,4 +26,22 @@ abstract class DateRangeFilter extends Filter
         $this->withMeta(['placeholder' => $placeholder]);
         return $this;
     }
+
+    public function maxRangeDays($days, $exceededMessage, $incompleteMessage)
+    {
+        $this->withMeta([
+            'maxRangeDays' => $days,
+            'rangeMessages' => [
+                'exceeded' => $exceededMessage,
+                'incomplete' => $incompleteMessage,
+            ],
+        ]);
+        return $this;
+    }
+
+    public function pickedRangeEndsAtEndOfDay()
+    {
+        $this->withMeta(['pickedRangeEndsAtEndOfDay' => true]);
+        return $this;
+    }
 }
