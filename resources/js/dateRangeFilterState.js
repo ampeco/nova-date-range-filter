@@ -19,6 +19,10 @@ function calendarDaysBetween(from, to) {
 }
 
 function rangeLimitViolation(selectedDates, maxRangeDays) {
+    if (selectedDates.length === 0) {
+        return null
+    }
+
     if (selectedDates.length !== 2) {
         return 'incomplete'
     }
@@ -33,9 +37,20 @@ function selectableDatesAround(date, maxRangeDays) {
     }
 }
 
+function resetCalendar(calendar, alwaysActive, currentValue, dateFormat) {
+    if (alwaysActive) {
+        calendar.set({minDate: null, maxDate: null})
+        calendar.setDate(currentValue, false, dateFormat)
+        return
+    }
+
+    calendar.clear()
+}
+
 module.exports = {
     commitDateRangeFilterValue,
     rangeLimitViolation,
+    resetCalendar,
     selectableDatesAround,
     selectedDatesToFilterValue,
 }

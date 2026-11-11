@@ -39,6 +39,12 @@ abstract class DateRangeFilter extends Filter
         return $this;
     }
 
+    public function alwaysActive()
+    {
+        $this->withMeta(['alwaysActive' => true]);
+        return $this;
+    }
+
     public function pickedRangeEndsAtEndOfDay()
     {
         $this->withMeta(['pickedRangeEndsAtEndOfDay' => true]);

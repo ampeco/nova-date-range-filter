@@ -3,7 +3,7 @@
         <div class="px-3 flex items-center justify-between gap-2">
             <h3 class="text-xs uppercase font-bold tracking-wide">{{ filter.name }}</h3>
             <button
-                v-if="hasValue && !maxRangeDays"
+                v-if="hasValue && !alwaysActive"
                 type="button"
                 class="text-sm leading-none text-red-500 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="disabled"
@@ -105,6 +105,9 @@ export default {
         maxRangeDays() {
             return this.modeType === 'range' ? this.filter.maxRangeDays : null
         },
+        alwaysActive() {
+            return !!this.filter.alwaysActive
+        },
         pickedRangeEndsAtEndOfDay() {
             return this.enableTime && this.modeType === 'range' && this.filter.pickedRangeEndsAtEndOfDay
         },
@@ -120,6 +123,9 @@ export default {
     watch: {
         'filter.currentValue'() {
             this.rangeMessage = null
+            if (this.alwaysActive) {
+                this.resetCalendar()
+            }
         },
     },
 
@@ -128,7 +134,7 @@ export default {
         this.options.forEach((option) => {
             Object.assign(this.filter, {[option.name]: option.value})
         })
-        Nova.$on("clear-filter-values", () => this.flatpickr && this.flatpickr.clear())
+        Nova.$on("clear-filter-values", () => this.resetCalendar())
         this.$nextTick(() => {
             this.flatpickr = flatpickr(this.$refs.datePicker, {
                 enableTime: this.enableTime,
@@ -186,6 +192,11 @@ export default {
                     to.setHours(23, 59, 0, 0)
                 }
 
+                if (this.alwaysActive && value.length === 0) {
+                    this.resetCalendar()
+                    return
+                }
+
                 if (this.maxRangeDays) {
                     const violation = dateRangeFilterState.rangeLimitViolation(value, this.maxRangeDays)
                     if (violation) {
@@ -207,6 +218,14 @@ export default {
             }
 
             this.updateFilterValue([])
+        },
+        resetCalendar() {
+            this.rangeMessage = null
+            this.pickedDatesCount = 0
+
+            if (this.flatpickr) {
+                dateRangeFilterState.resetCalendar(this.flatpickr, this.alwaysActive, this.filter.currentValue, this.dateFormat)
+            }
         },
         updateFilterValue(value) {
             dateRangeFilterState.commitDateRangeFilterValue(this.$store, this.resourceName, this.filterKey, value)
