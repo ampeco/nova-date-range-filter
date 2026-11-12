@@ -3,7 +3,7 @@
         <div class="px-3 flex items-center justify-between gap-2">
             <h3 class="text-xs uppercase font-bold tracking-wide">{{ filter.name }}</h3>
             <button
-                v-if="hasValue"
+                v-if="hasValue && !alwaysActive"
                 type="button"
                 class="text-sm leading-none text-red-500 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="disabled"
@@ -23,7 +23,9 @@
                 ref="datePicker"
                 type="text"
                 :placeholder="placeholder"
+                @input="handleTyping"
             />
+            <p v-if="rangeMessage" class="mt-1 text-xs text-red-500">{{ rangeMessage }}</p>
         </div>
     </div>
 </template>
@@ -45,7 +47,7 @@ export default {
 
     },
 
-    data: () => ({flatpickr: null}),
+    data: () => ({flatpickr: null, rangeMessage: null, pickedDatesCount: 0, typedTextPending: false}),
 
     computed: {
         placeholder() {
@@ -101,6 +103,15 @@ export default {
         defaultMinute() {
             return this.filter.mode === 'to' ? 59 : 0
         },
+        maxRangeDays() {
+            return this.modeType === 'range' ? this.filter.maxRangeDays : null
+        },
+        alwaysActive() {
+            return !!this.filter.alwaysActive
+        },
+        pickedRangeEndsAtEndOfDay() {
+            return this.enableTime && this.modeType === 'range' && this.filter.pickedRangeEndsAtEndOfDay
+        },
         hasValue() {
             if (Array.isArray(this.filter.currentValue)) {
                 return this.filter.currentValue.length > 0
@@ -110,16 +121,28 @@ export default {
         }
     },
 
+    watch: {
+        'filter.currentValue'() {
+            if (this.alwaysActive) {
+                this.resetCalendar()
+                return
+            }
+
+            this.rangeMessage = null
+        },
+    },
+
     mounted() {
         const self = this
         this.options.forEach((option) => {
             Object.assign(this.filter, {[option.name]: option.value})
         })
-        Nova.$on("clear-filter-values", () => this.flatpickr && this.flatpickr.clear())
+        Nova.$on('clear-filter-values', this.resetCalendar)
         this.$nextTick(() => {
             this.flatpickr = flatpickr(this.$refs.datePicker, {
                 enableTime: this.enableTime,
                 enableSeconds: this.enableSeconds,
+                onChange: this.handleSelection,
                 onClose: this.handleChange,
                 dateFormat: this.dateFormat,
                 allowInput: true,
@@ -128,8 +151,11 @@ export default {
                 defaultHour: this.defaultHour,
                 defaultMinute: this.defaultMinute,
                 time_24hr: !this.twelveHourTime,
-                onReady() {
+                onReady(selectedDates, dateStr, instance) {
                     self.$refs.datePicker.parentNode.classList.add('date-filter')
+                    dateRangeFilterState.onCalendarDayMouseDown(instance, () => {
+                        self.typedTextPending = false
+                    })
                 },
                 onYearChange: (selectedDates, dateStr, instance) => {
                     // Redraw calendar when year changes via the year input
@@ -147,13 +173,54 @@ export default {
         })
     },
 
+    beforeUnmount() {
+        Nova.$off('clear-filter-values', this.resetCalendar)
+    },
+
     methods: {
+        handleSelection(selectedDates, dateStr, instance) {
+            const rangeCompleted = dateRangeFilterState.pickCompletesRange(selectedDates, this.pickedDatesCount, this.typedTextPending)
+            this.pickedDatesCount = selectedDates.length
+            this.typedTextPending = false
+
+            if (this.maxRangeDays) {
+                instance.set(selectedDates.length === 1
+                    ? dateRangeFilterState.selectableDatesAround(selectedDates[0], this.maxRangeDays)
+                    : dateRangeFilterState.unrestrictedDates())
+            }
+
+            if (this.pickedRangeEndsAtEndOfDay && rangeCompleted) {
+                dateRangeFilterState.moveToEndOfDay(selectedDates[1])
+                instance.setDate(selectedDates, false)
+            }
+        },
+        handleTyping(event) {
+            if (!event.isTrusted || !this.flatpickr) {
+                return
+            }
+
+            this.typedTextPending = true
+            dateRangeFilterState.releaseCalendarForTyping(this.flatpickr, this.maxRangeDays)
+        },
         handleChange(value) {
             setTimeout(() => {
                 const [from, to] = value
                 if (this.enableTime && this.modeType === 'range' && value.length === 2
                     && from.getTime() === to.getTime()) {
-                    to.setHours(23, 59, 0, 0)
+                    dateRangeFilterState.moveToEndOfDay(to)
+                }
+
+                if (this.alwaysActive && value.length === 0) {
+                    this.resetCalendar()
+                    return
+                }
+
+                if (this.maxRangeDays) {
+                    const violation = dateRangeFilterState.rangeLimitViolation(value, this.maxRangeDays)
+                    if (violation) {
+                        this.rangeMessage = this.filter.rangeMessages[violation]
+                        return
+                    }
                 }
 
                 this.updateFilterValue(dateRangeFilterState.selectedDatesToFilterValue(value, this.dateFormat, flatpickr.formatDate))
@@ -169,6 +236,22 @@ export default {
             }
 
             this.updateFilterValue([])
+        },
+        resetCalendar() {
+            this.rangeMessage = null
+            this.pickedDatesCount = 0
+            this.typedTextPending = false
+
+            if (!this.flatpickr) {
+                return
+            }
+
+            if (this.alwaysActive) {
+                dateRangeFilterState.restoreCalendarValue(this.flatpickr, this.filter.currentValue, this.dateFormat)
+                return
+            }
+
+            this.flatpickr.clear()
         },
         updateFilterValue(value) {
             dateRangeFilterState.commitDateRangeFilterValue(this.$store, this.resourceName, this.filterKey, value)
