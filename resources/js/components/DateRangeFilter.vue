@@ -153,10 +153,8 @@ export default {
                 time_24hr: !this.twelveHourTime,
                 onReady(selectedDates, dateStr, instance) {
                     self.$refs.datePicker.parentNode.classList.add('date-filter')
-                    instance.calendarContainer.addEventListener('mousedown', (event) => {
-                        if (event.target.closest('.flatpickr-day')) {
-                            self.typedTextPending = false
-                        }
+                    dateRangeFilterState.onCalendarDayMouseDown(instance, () => {
+                        self.typedTextPending = false
                     })
                 },
                 onYearChange: (selectedDates, dateStr, instance) => {

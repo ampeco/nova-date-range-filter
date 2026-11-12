@@ -56,6 +56,18 @@ function releaseCalendarForTyping(calendar, maxRangeDays) {
     calendar.input.setSelectionRange(selectionStart, selectionEnd)
 }
 
+function onCalendarDayMouseDown(calendar, handler) {
+    if (!calendar.calendarContainer) {
+        return
+    }
+
+    calendar.calendarContainer.addEventListener('mousedown', (event) => {
+        if (event.target.closest('.flatpickr-day')) {
+            handler()
+        }
+    })
+}
+
 function moveToEndOfDay(date) {
     date.setHours(23, 59, 0, 0)
 }
@@ -68,6 +80,7 @@ function restoreCalendarValue(calendar, currentValue, dateFormat) {
 module.exports = {
     commitDateRangeFilterValue,
     moveToEndOfDay,
+    onCalendarDayMouseDown,
     pickCompletesRange,
     rangeLimitViolation,
     releaseCalendarForTyping,
