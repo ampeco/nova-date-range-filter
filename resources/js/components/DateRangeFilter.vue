@@ -122,10 +122,12 @@ export default {
 
     watch: {
         'filter.currentValue'() {
-            this.rangeMessage = null
             if (this.alwaysActive) {
                 this.resetCalendar()
+                return
             }
+
+            this.rangeMessage = null
         },
     },
 
@@ -134,7 +136,7 @@ export default {
         this.options.forEach((option) => {
             Object.assign(this.filter, {[option.name]: option.value})
         })
-        Nova.$on("clear-filter-values", () => this.resetCalendar())
+        Nova.$on('clear-filter-values', this.resetCalendar)
         this.$nextTick(() => {
             this.flatpickr = flatpickr(this.$refs.datePicker, {
                 enableTime: this.enableTime,
@@ -167,6 +169,10 @@ export default {
         })
     },
 
+    beforeUnmount() {
+        Nova.$off('clear-filter-values', this.resetCalendar)
+    },
+
     methods: {
         handleSelection(selectedDates, dateStr, instance) {
             const rangeCompleted = selectedDates.length === 2 && this.pickedDatesCount === 1
@@ -175,13 +181,12 @@ export default {
             if (this.maxRangeDays) {
                 instance.set(selectedDates.length === 1
                     ? dateRangeFilterState.selectableDatesAround(selectedDates[0], this.maxRangeDays)
-                    : {minDate: null, maxDate: null})
+                    : dateRangeFilterState.unrestrictedDates())
             }
 
             if (this.pickedRangeEndsAtEndOfDay && rangeCompleted) {
-                const [from, to] = selectedDates
-                to.setHours(23, 59, 0, 0)
-                instance.setDate([from, to], false)
+                dateRangeFilterState.moveToEndOfDay(selectedDates[1])
+                instance.setDate(selectedDates, false)
             }
         },
         handleChange(value) {
@@ -189,7 +194,7 @@ export default {
                 const [from, to] = value
                 if (this.enableTime && this.modeType === 'range' && value.length === 2
                     && from.getTime() === to.getTime()) {
-                    to.setHours(23, 59, 0, 0)
+                    dateRangeFilterState.moveToEndOfDay(to)
                 }
 
                 if (this.alwaysActive && value.length === 0) {
@@ -223,9 +228,16 @@ export default {
             this.rangeMessage = null
             this.pickedDatesCount = 0
 
-            if (this.flatpickr) {
-                dateRangeFilterState.resetCalendar(this.flatpickr, this.alwaysActive, this.filter.currentValue, this.dateFormat)
+            if (!this.flatpickr) {
+                return
             }
+
+            if (this.alwaysActive) {
+                dateRangeFilterState.restoreCalendarValue(this.flatpickr, this.filter.currentValue, this.dateFormat)
+                return
+            }
+
+            this.flatpickr.clear()
         },
         updateFilterValue(value) {
             dateRangeFilterState.commitDateRangeFilterValue(this.$store, this.resourceName, this.filterKey, value)

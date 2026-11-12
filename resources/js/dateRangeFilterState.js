@@ -37,20 +37,25 @@ function selectableDatesAround(date, maxRangeDays) {
     }
 }
 
-function resetCalendar(calendar, alwaysActive, currentValue, dateFormat) {
-    if (alwaysActive) {
-        calendar.set({minDate: null, maxDate: null})
-        calendar.setDate(currentValue, false, dateFormat)
-        return
-    }
+function unrestrictedDates() {
+    return {minDate: null, maxDate: null}
+}
 
-    calendar.clear()
+function moveToEndOfDay(date) {
+    date.setHours(23, 59, 0, 0)
+}
+
+function restoreCalendarValue(calendar, currentValue, dateFormat) {
+    calendar.set(unrestrictedDates())
+    calendar.setDate(currentValue, false, dateFormat)
 }
 
 module.exports = {
     commitDateRangeFilterValue,
+    moveToEndOfDay,
     rangeLimitViolation,
-    resetCalendar,
+    restoreCalendarValue,
     selectableDatesAround,
     selectedDatesToFilterValue,
+    unrestrictedDates,
 }
