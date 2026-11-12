@@ -41,6 +41,21 @@ function unrestrictedDates() {
     return {minDate: null, maxDate: null}
 }
 
+function pickCompletesRange(selectedDates, pickedDatesCount, typedTextPending) {
+    return !typedTextPending && selectedDates.length === 2 && pickedDatesCount === 1
+}
+
+function releaseCalendarForTyping(calendar, maxRangeDays) {
+    if (!maxRangeDays || (!calendar.config.minDate && !calendar.config.maxDate)) {
+        return
+    }
+
+    const {value, selectionStart, selectionEnd} = calendar.input
+    calendar.set(unrestrictedDates())
+    calendar.input.value = value
+    calendar.input.setSelectionRange(selectionStart, selectionEnd)
+}
+
 function moveToEndOfDay(date) {
     date.setHours(23, 59, 0, 0)
 }
@@ -53,7 +68,9 @@ function restoreCalendarValue(calendar, currentValue, dateFormat) {
 module.exports = {
     commitDateRangeFilterValue,
     moveToEndOfDay,
+    pickCompletesRange,
     rangeLimitViolation,
+    releaseCalendarForTyping,
     restoreCalendarValue,
     selectableDatesAround,
     selectedDatesToFilterValue,

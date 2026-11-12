@@ -23,6 +23,7 @@
                 ref="datePicker"
                 type="text"
                 :placeholder="placeholder"
+                @input="handleTyping"
             />
             <p v-if="rangeMessage" class="mt-1 text-xs text-red-500">{{ rangeMessage }}</p>
         </div>
@@ -46,7 +47,7 @@ export default {
 
     },
 
-    data: () => ({flatpickr: null, rangeMessage: null, pickedDatesCount: 0}),
+    data: () => ({flatpickr: null, rangeMessage: null, pickedDatesCount: 0, typedTextPending: false}),
 
     computed: {
         placeholder() {
@@ -150,8 +151,13 @@ export default {
                 defaultHour: this.defaultHour,
                 defaultMinute: this.defaultMinute,
                 time_24hr: !this.twelveHourTime,
-                onReady() {
+                onReady(selectedDates, dateStr, instance) {
                     self.$refs.datePicker.parentNode.classList.add('date-filter')
+                    instance.calendarContainer.addEventListener('mousedown', (event) => {
+                        if (event.target.closest('.flatpickr-day')) {
+                            self.typedTextPending = false
+                        }
+                    })
                 },
                 onYearChange: (selectedDates, dateStr, instance) => {
                     // Redraw calendar when year changes via the year input
@@ -175,8 +181,9 @@ export default {
 
     methods: {
         handleSelection(selectedDates, dateStr, instance) {
-            const rangeCompleted = selectedDates.length === 2 && this.pickedDatesCount === 1
+            const rangeCompleted = dateRangeFilterState.pickCompletesRange(selectedDates, this.pickedDatesCount, this.typedTextPending)
             this.pickedDatesCount = selectedDates.length
+            this.typedTextPending = false
 
             if (this.maxRangeDays) {
                 instance.set(selectedDates.length === 1
@@ -188,6 +195,14 @@ export default {
                 dateRangeFilterState.moveToEndOfDay(selectedDates[1])
                 instance.setDate(selectedDates, false)
             }
+        },
+        handleTyping(event) {
+            if (!event.isTrusted || !this.flatpickr) {
+                return
+            }
+
+            this.typedTextPending = true
+            dateRangeFilterState.releaseCalendarForTyping(this.flatpickr, this.maxRangeDays)
         },
         handleChange(value) {
             setTimeout(() => {
@@ -227,6 +242,7 @@ export default {
         resetCalendar() {
             this.rangeMessage = null
             this.pickedDatesCount = 0
+            this.typedTextPending = false
 
             if (!this.flatpickr) {
                 return
