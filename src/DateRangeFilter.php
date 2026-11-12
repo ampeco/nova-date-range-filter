@@ -30,7 +30,7 @@ abstract class DateRangeFilter extends Filter
     public function maxRangeDays($days, $exceededMessage, $incompleteMessage)
     {
         $this->withMeta([
-            'maxRangeDays' => $days,
+            'maxRangeDays' => (int) $days,
             'rangeMessages' => [
                 'exceeded' => $exceededMessage,
                 'incomplete' => $incompleteMessage,
